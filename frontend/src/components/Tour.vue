@@ -1,4 +1,4 @@
-<template> 
+<template>
   <div ref="tourContainer" class="tour-container">
     <!-- Toggle Button for Switching Views -->
     <button @click="toggleView" class="toggle-button">
@@ -11,6 +11,23 @@
       <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" v-model="cameraSpeed" />
       <span>{{ Number(cameraSpeed).toFixed(1) }}</span>
     </div>
+
+    <!-- Search Bar with Suggestions for Buildings -->
+    <div class="search-bar">
+      <input
+        type="text"
+        v-model="searchQuery"
+        @input="performSearch"
+        placeholder="Search for a building"
+      />
+      <ul v-if="buildings.length">
+        <li v-for="building in buildings" :key="building.id">
+          {{ building.name }}
+          <button @click="navigateToBuilding(building)">Go</button>
+        </li>
+      </ul>
+      <p v-if="!buildings.length && searchQuery">No results found.</p>
+    </div>
   </div>
 </template>
 
@@ -18,6 +35,7 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import gsap from 'gsap';
+import axios from 'axios';
 
 export default {
   name: 'Tour',
@@ -35,6 +53,8 @@ export default {
       isMouseDown: false,
       previousMouseX: null,
       walkingAudio: null,
+      searchQuery: '', // Search query for buildings
+      buildings: [],   // List of search results
     };
   },
   mounted() {
@@ -55,8 +75,40 @@ export default {
     window.removeEventListener('mousemove', this.onMouseMove);
   },
   methods: {
+    // Function to perform search with each keystroke
+    performSearch() {
+      // Only perform search if there’s a query to avoid unnecessary calls
+      if (this.searchQuery.trim()) {
+       axios.get(`http://localhost:3000/api/search?q=${this.searchQuery}`)
+          .then(response => {
+            this.buildings = response.data;
+            console.log("Search suggestions:", this.buildings); // Log search results
+          })
+          .catch(error => {
+            console.error("Error fetching search suggestions:", error);
+          });
+      } else {
+        this.buildings = []; // Clear suggestions if search query is empty
+      }
+    },
+
+    // Function to navigate to the selected building
+    navigateToBuilding(building) {
+      console.log("Navigating to building:", building);
+      gsap.to(this.camera.position, {
+        x: building.x,
+        y: building.y,
+        z: building.z,
+        duration: 2,
+        onUpdate: () => {
+          this.camera.lookAt(building.x, building.y, building.z);
+        }
+      });
+    },
+
     init3DScene() {
       this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(0x87CEEB);
       this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       this.camera.position.set(this.walkingPosition.x, this.walkingPosition.y, this.walkingPosition.z);
       this.camera.lookAt(10, 2, 5);
@@ -86,7 +138,7 @@ export default {
         const groundWidth = this.campusSize.x * 1.1;
         const groundHeight = this.campusSize.z * 1.1;
         const groundGeometry = new THREE.PlaneGeometry(groundWidth, groundHeight);
-        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.position.set(this.campusCenter.x, -1, this.campusCenter.z);
@@ -111,10 +163,12 @@ export default {
 
       this.animate();
     },
+
     animate() {
       requestAnimationFrame(this.animate.bind(this));
       this.renderer.render(this.scene, this.camera);
     },
+
     onMouseDown(event) {
       this.isMouseDown = true;
       this.previousMouseX = event.clientX;
@@ -197,7 +251,7 @@ export default {
           z: this.campusCenter.z,
           duration: 2,
           onUpdate: () => {
-            this.camera.lookAt(this.campusCenter);
+             this.camera.lookAt(this.campusCenter.x + 10, this.campusCenter.y, this.campusCenter.z);
           },
         });
       } else {
@@ -207,11 +261,12 @@ export default {
           z: this.walkingPosition.z,
           duration: 2,
           onUpdate: () => {
-            this.camera.lookAt(0, 2, 0);
+            this.camera.lookAt(0, 5, 0);
           },
         });
       }
     },
+
     onWindowResize() {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
@@ -221,12 +276,11 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 html, body {
@@ -236,12 +290,15 @@ html, body {
 }
 
 .tour-container {
+  position: fixed; /* Ensures container is fixed to viewport */
+  top: 0;
+  left: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  position: relative;
   touch-action: none;
 }
+
 .toggle-button {
   position: absolute;
   top: 20px;
@@ -255,6 +312,7 @@ html, body {
   border-radius: 5px;
   z-index: 10;
 }
+
 .speed-control {
   position: absolute;
   top: 70px;
@@ -265,15 +323,60 @@ html, body {
   border-radius: 5px;
   font-size: 14px;
 }
+
 .speed-control label {
   margin-right: 10px;
 }
+
 .speed-control input[type="range"] {
   width: 100px;
   vertical-align: middle;
 }
+
 .speed-control span {
   margin-left: 10px;
   font-weight: bold;
 }
+
+.search-bar {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 5px;
+  width: 250px;
+  z-index: 10;
+}
+
+.search-bar input[type="text"] {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.search-bar ul {
+  margin-top: 10px;
+  list-style: none;
+  padding: 0;
+}
+
+.search-bar ul li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.search-bar ul li button {
+  padding: 5px;
+  font-size: 0.9em;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
 </style>

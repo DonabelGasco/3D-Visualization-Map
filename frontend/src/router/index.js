@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Home from '../components/Home.vue';
 import AboutView from '../views/AboutView.vue';
-import Tour from '../components/Tour.vue'; // Import Tour component
+import TourView from '../views/TourView.vue';
 
 const routes = [
   {
@@ -15,10 +15,10 @@ const routes = [
     component: AboutView
   },
   {
-    path: '/tour', // Add route for Tour
+    path: '/Tour',
     name: 'Tour',
-    component: Tour
-  }
+    component: TourView
+  },
 ];
 
 const router = createRouter({

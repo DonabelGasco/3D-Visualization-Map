@@ -6,18 +6,13 @@
           &#9776;
         </div>
         <div class="bookmark" @click="toggleBookmark">
-          <i :class="{'fas fa-bookmark': isBookmarked, 'far fa-bookmark': !isBookmarked}" :style="{color: isBookmarked ? 'green' : 'black'}"></i>
+          <i :class="{ 'fas fa-bookmark': isBookmarked, 'far fa-bookmark': !isBookmarked }" :style="{ color: isBookmarked ? 'green' : 'black' }"></i>
         </div>
       </div>
       <ul>
         <li>
           <i class="fas fa-search" style="color: black;"></i>
-          <input
-            type="text"
-            v-model="searchQuery"
-            @keyup.enter="performSearch"
-            :placeholder="$t('searchPlaceholder')"
-          />
+          <input type="text" v-model="searchQuery" @keyup.enter="performSearch" :placeholder="$t('searchPlaceholder')" />
         </li>
       </ul>
     </nav>
@@ -32,12 +27,8 @@
               <i class="fas fa-language"></i> {{ $t('language') }}
             </a>
             <div v-if="isLanguageDropdownOpen" class="language-dropdown">
-              <label>
-                <input type="radio" v-model="selectedLanguage" value="en" @change="changeLanguage"> English
-              </label>
-              <label>
-                <input type="radio" v-model="selectedLanguage" value="fil" @change="changeLanguage"> Filipino
-              </label>
+              <label><input type="radio" v-model="selectedLanguage" value="en" @change="changeLanguage" /> English</label>
+              <label><input type="radio" v-model="selectedLanguage" value="fil" @change="changeLanguage" /> Filipino</label>
             </div>
           </li>
         </ul>
@@ -45,6 +36,7 @@
       <main class="content" :class="{ shifted: isSidebarOpen }" ref="content">
         <h1>{{ $t('welcome') }}</h1>
         <button @click="goToTour">Start 3D Tour</button>
+        <p>{{ message }}</p> <!-- Display the backend message here -->
       </main>
       <div class="zoom-controls">
         <button @click="zoomIn">+</button>
@@ -55,6 +47,8 @@
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
   name: 'Home',
   data() {
@@ -65,7 +59,18 @@ export default {
       selectedLanguage: 'en',
       searchQuery: '',
       zoomLevel: 1,
+      message: '', // Data property to store the backend message
     };
+  },
+  mounted() {
+    // Fetch data from the backend API on component mount
+    axios.get('/api/data')
+      .then(response => {
+        this.message = response.data.message;
+      })
+      .catch(error => {
+        console.error("Error connecting to backend:", error);
+      });
   },
   methods: {
     toggleSidebar() {
@@ -73,7 +78,6 @@ export default {
     },
     toggleBookmark() {
       this.isBookmarked = !this.isBookmarked;
-      // Add your bookmark logic here
     },
     toggleLanguageDropdown() {
       this.isLanguageDropdownOpen = !this.isLanguageDropdownOpen;
@@ -83,7 +87,6 @@ export default {
     },
     performSearch() {
       alert(`Searching for: ${this.searchQuery}`);
-      // Add your search logic here
     },
     zoomIn() {
       this.zoomLevel += 0.1;
@@ -98,7 +101,7 @@ export default {
       this.$refs.content.style.transformOrigin = 'top left';
     },
     goToTour() {
-      this.$router.push({ name: 'Tour' }); 
+      this.$router.push({ name: 'Tour' });
     },
   },
 };
